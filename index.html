@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="th"><head><base target="_top"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ค่าแรงคงเหลือ · กฟส.ป่าซาง</title>
+<style>
+:root{--ink:#1a1020;--bg:#14102a;--panel:#241c44;--panel2:#2f2558;--hi:#ffd23f;--fg:#f4f0ff;--dim:#b9aee0;--ok:#5cff8a;--err:#ff6b6b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 Tahoma,"Sarabun",system-ui,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:4px solid var(--ink);box-shadow:0 4px 0 var(--fg);padding:10px 16px}
+h1{font-size:19px;margin:0;color:var(--hi);text-shadow:3px 3px 0 var(--ink)}
+.sub{font-size:12px;color:var(--dim)}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+button{font:inherit;font-weight:700;color:var(--ink);background:var(--hi);border:3px solid var(--ink);box-shadow:inset -3px -3px 0 #c99400,inset 3px 3px 0 #fff3a8;padding:5px 12px;cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.alt{background:#c9c2ea;box-shadow:inset -3px -3px 0 #8f86bd,inset 3px 3px 0 #fff}
+button.red{background:#ff9a9a;box-shadow:inset -3px -3px 0 #c95c5c,inset 3px 3px 0 #ffe0e0}
+button.sm{padding:1px 8px;font-size:13px}
+nav button.on{background:var(--fg)}
+input,select{font:inherit;color:var(--ink);background:#fff;border:3px solid var(--ink);padding:4px 7px}
+main{max-width:1100px;margin:0 auto;padding:14px 16px 60px}
+.px{border:4px solid var(--ink);box-shadow:0 0 0 4px var(--fg),0 0 0 8px var(--ink);background:var(--panel);padding:12px 14px;margin:16px 0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+label{display:flex;flex-direction:column;font-size:12px;color:var(--dim);gap:2px}
+.kpi{display:flex;gap:12px;flex-wrap:wrap}
+.kpi div{background:var(--panel2);border:3px solid var(--ink);padding:6px 12px;min-width:150px}
+.kpi b{display:block;font-size:20px;color:var(--hi);font-variant-numeric:tabular-nums}
+table{border-collapse:collapse;width:100%;background:#fff;color:var(--ink);font-size:14px}
+th,td{border:2px solid var(--ink);padding:4px 6px;text-align:left;vertical-align:middle}
+th{background:#c9c2ea;position:sticky;top:0}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.grp td{background:#efe9ff;font-weight:700}
+tr.net{cursor:pointer}tr.net:hover td{background:#fff8d0}
+tr.cx td{color:#999;text-decoration:line-through}
+.tbl{overflow:auto;max-height:65vh;border:3px solid var(--ink)}
+.msg{min-height:22px;font-size:14px;margin:6px 0}.msg.ok{color:var(--ok)}.msg.err{color:var(--err)}.msg.warn{color:var(--hi)}
+.amt{width:120px;text-align:right}
+.bad{background:#ffd0d0}
+.sum{position:sticky;bottom:0;background:var(--panel);border:3px solid var(--ink);padding:8px 12px;margin-top:10px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.sum b{font-variant-numeric:tabular-nums}
+dialog{border:0;padding:0;background:transparent;max-width:760px;width:calc(100% - 32px)}
+dialog::backdrop{background:#000a}
+.hide{display:none}
+@media(max-width:600px){.amt{width:90px}th,td{font-size:12px;padding:3px}}
+</style></head><body>
+<header>
+  <h1>★ ค่าแรง / ค่าเบ็ดเตล็ด คงเหลือ ★</h1>
+  <div class="sub" id="stamp">กำลังโหลด…</div>
+  <nav><button data-v="labor" class="on">ค่าแรงคงเหลือ</button><button data-v="misc">ค่าเบ็ดเตล็ดคงเหลือ</button><button data-v="pay">✎ ลงค่าใช้จ่าย</button><button data-v="hist">ประวัติ</button><button class="alt" id="reload">↻ รีเฟรช</button></nav>
+</header>
+<main>
+  <div class="msg" id="msg"></div>
+
+  <section id="v-list">
+    <div class="kpi" id="kpi"></div>
+    <div class="px"><div class="row"><label style="flex:1 1 260px">ค้นหา (WBS / ชื่องาน / Network)<input id="q" placeholder="เช่น 0050 หรือ บุญเทือง"></label></div>
+      <p class="sub" style="margin:6px 0">แสดงเฉพาะ Network ที่ยังเบิกได้ (คงเหลือ &gt; 0) · คลิกที่แถวเพื่อดูประวัติ</p>
+      <div class="tbl"><table><thead><tr><th>Network</th><th>รายการ</th><th class="n">ใช้ได้จริง 80%</th><th class="n">Act.</th><th class="n">คงเหลือ</th></tr></thead><tbody id="tb"></tbody></table></div></div>
+  </section>
+
+  <section id="v-pay" class="hide"><div class="px">
+    <div class="row">
+      <label>ประเภท<select id="pType"><option value="labor">จ่ายค่าแรง</option><option value="misc">จ่ายค่าเบ็ดเตล็ด</option></select></label>
+      <label>วันที่จ่าย<input type="date" id="pDate"></label>
+      <label>ยอดจ่ายรวม (บาท)<input id="pTotal" inputmode="decimal" class="amt" placeholder="5000"></label>
+      <label style="flex:1 1 200px">หมายเหตุ<input id="pNote" placeholder="เช่น งวดที่ 1 ผู้รับเหมา…"></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label style="flex:1 1 260px">กรองงาน (WBS / ชื่องาน)<input id="pq" placeholder="พิมพ์เพื่อกรอง"></label>
+      <button class="alt" id="pAuto" title="เติมยอดจ่ายรวมลง Network ที่แสดงอยู่ ตามลำดับ">แบ่งยอดอัตโนมัติ</button>
+      <button class="alt" id="pClear">ล้างตัวเลข</button>
+    </div>
+    <div class="tbl" style="margin-top:10px"><table><thead><tr><th>Network</th><th>รายการ</th><th class="n">คงเหลือ</th><th class="n">ตัดยอด (บาท)</th><th></th></tr></thead><tbody id="ptb"></tbody></table></div>
+    <div class="sum"><span>ตัดแล้ว <b id="pSum">0</b> บาท</span><span id="pLeftWrap">จากยอดรวม <b id="pTot">–</b> · เหลือให้แบ่ง <b id="pLeft">–</b></span>
+      <button id="pSave" style="margin-left:auto" disabled>บันทึก</button></div>
+  </div></section>
+
+  <section id="v-hist" class="hide"><div class="px">
+    <div class="row"><label style="flex:1 1 260px">ค้นหา<input id="hq" placeholder="WBS / Network / หมายเหตุ"></label>
+      <label>ประเภท<select id="ht"><option value="">ทั้งหมด</option><option>จ่ายค่าแรง</option><option>จ่ายค่าเบ็ดเตล็ด</option></select></label></div>
+    <div class="tbl" style="margin-top:10px"><table><thead><tr><th>วันที่</th><th>ประเภท</th><th>WBS</th><th>Network</th><th>รายการ</th><th class="n">จำนวน</th><th>หมายเหตุ</th><th></th></tr></thead><tbody id="htb"></tbody></table></div>
+  </div></section>
+</main>
+
+<dialog id="dlg"><div class="px" style="margin:0"><div id="dlgBody"></div><div class="row" style="justify-content:flex-end;margin-top:10px" id="dlgBtns"></div></div></dialog>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=n=>Number(n||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const num=v=>{const n=parseFloat(String(v??"").replace(/,/g,""));return isFinite(n)?n:0};
+const r2=n=>Math.round(n*100)/100;
+const TN={labor:"จ่ายค่าแรง",misc:"จ่ายค่าเบ็ดเตล็ด"};
+let D={rows:[],history:[]},view="labor";
+function call(fn,...a){return new Promise((ok,no)=>google.script.run.withSuccessHandler(ok).withFailureHandler(e=>no(e&&e.message?e:new Error(String(e))))[fn](...a))}
+function msg(t,c="ok"){const m=$("#msg");m.className="msg "+c;m.textContent=t}
+async function load(){msg("กำลังโหลดข้อมูลจากชีต…","warn");try{set(await call("getData"));msg("")}catch(e){msg("โหลดไม่สำเร็จ: "+e.message,"err")}}
+function set(d){D=d;$("#stamp").textContent=`ชีต "${d.sheet}" · ${d.rows.length} Network · อัปเดต ${new Date(d.at).toLocaleString("th-TH")}`;render()}
+const match=(o,q)=>!q||[o.wbs,o.job,o.net,o.desc].some(x=>String(x).toLowerCase().includes(q));
+function groups(rows){const g=new Map();for(const o of rows){if(!g.has(o.wbs))g.set(o.wbs,{wbs:o.wbs,job:o.job,rows:[]});g.get(o.wbs).rows.push(o)}return [...g.values()]}
+
+function render(){
+  document.querySelectorAll("nav button[data-v]").forEach(b=>b.classList.toggle("on",b.dataset.v===view));
+  $("#v-list").classList.toggle("hide",!(view==="labor"||view==="misc"));$("#v-pay").classList.toggle("hide",view!=="pay");$("#v-hist").classList.toggle("hide",view!=="hist");
+  if(view==="labor"||view==="misc")renderList();if(view==="pay")renderPay();if(view==="hist")renderHist()}
+function renderList(){const t=view,q=$("#q").value.trim().toLowerCase();
+  const all=D.rows.filter(o=>o[t].rem>0.004);const rows=all.filter(o=>match(o,q));const G=groups(rows);
+  const tot=all.reduce((a,o)=>a+o[t].rem,0);
+  $("#kpi").innerHTML=`<div>${t==="labor"?"ค่าแรง":"ค่าเบ็ดเตล็ด"}คงเหลือรวม<b>${fmt(tot)}</b></div><div>จำนวนงาน (WBS)<b>${new Set(all.map(o=>o.wbs)).size}</b></div><div>จำนวน Network<b>${all.length}</b></div>`;
+  $("#tb").innerHTML=G.map(g=>{const s=g.rows.reduce((a,o)=>a+o[t].rem,0);
+    return `<tr class="grp"><td colspan="4">${esc(g.wbs)} · ${esc(g.job)}</td><td class="n">${fmt(s)}</td></tr>`+
+      g.rows.map(o=>`<tr class="net" data-w="${esc(o.wbs)}" data-n="${esc(o.net)}"><td>${esc(o.net)}</td><td>${esc(o.desc)}</td><td class="n">${fmt(o[t].avail)}</td><td class="n">${fmt(o[t].act)}</td><td class="n"><b>${fmt(o[t].rem)}</b></td></tr>`).join("")}).join("")
+    ||`<tr><td colspan="5">ไม่มีงานที่${t==="labor"?"ค่าแรง":"ค่าเบ็ดเตล็ด"}คงเหลือ</td></tr>`}
+$("#tb").onclick=e=>{const tr=e.target.closest("tr.net");if(tr)showNetHist(tr.dataset.w,tr.dataset.n)};
+function showNetHist(w,n){const o=D.rows.find(x=>x.wbs===w&&x.net===n);const H=D.history.filter(h=>h.wbs===w&&h.net===n);
+  $("#dlgBody").innerHTML=`<b>${esc(n)} · ${esc(o?.desc)}</b><div class="sub">${esc(w)} · ${esc(o?.job)}</div>
+   <p>ค่าแรงคงเหลือ <b>${fmt(o?.labor.rem)}</b> · ค่าเบ็ดเตล็ดคงเหลือ <b>${fmt(o?.misc.rem)}</b></p>
+   <div class="tbl" style="max-height:50vh"><table><thead><tr><th>วันที่</th><th>ประเภท</th><th class="n">จำนวน</th><th>หมายเหตุ</th></tr></thead><tbody>
+   ${H.map(h=>`<tr class="${h.status==="ยกเลิก"?"cx":""}"><td>${esc(h.date)}</td><td>${esc(h.type)}</td><td class="n">${fmt(h.amount)}</td><td>${esc(h.note)}${h.status==="ยกเลิก"?" (ยกเลิก)":""}</td></tr>`).join("")||`<tr><td colspan="4">ยังไม่มีประวัติที่ลงผ่านแอปนี้</td></tr>`}</tbody></table></div>`;
+  $("#dlgBtns").innerHTML=`<button class="alt" id="dClose">ปิด</button><button id="dPay">✎ ลงค่าใช้จ่าย Network นี้</button>`;
+  $("#dClose").onclick=()=>$("#dlg").close();$("#dPay").onclick=()=>{$("#dlg").close();view="pay";$("#pType").value=(o&&o.labor.rem>0)?"labor":"misc";$("#pq").value=n;ALLOC={};render()};
+  $("#dlg").showModal()}
+
+/* ---- pay ---- */
+let ALLOC={};
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
+$("#pDate").value=today();
+const key=o=>o.wbs+"|"+o.net;
+function payRows(){const t=$("#pType").value,q=$("#pq").value.trim().toLowerCase();return D.rows.filter(o=>o[t].rem>0.004&&(match(o,q)||ALLOC[key(o)]>0))}
+function renderPay(){const t=$("#pType").value;const G=groups(payRows());
+  $("#ptb").innerHTML=G.map(g=>`<tr class="grp"><td colspan="5">${esc(g.wbs)} · ${esc(g.job)}</td></tr>`+g.rows.map(o=>{const k=key(o),v=ALLOC[k]||"";
+    return `<tr><td>${esc(o.net)}</td><td>${esc(o.desc)}</td><td class="n">${fmt(o[t].rem)}</td><td class="n"><input class="amt" data-k="${esc(k)}" inputmode="decimal" value="${v?v:""}"></td><td><button class="sm alt" data-full="${esc(k)}">เต็ม</button></td></tr>`}).join("")).join("")
+    ||`<tr><td colspan="5">ไม่มี Network ที่ยังเบิก${t==="labor"?"ค่าแรง":"ค่าเบ็ดเตล็ด"}ได้</td></tr>`;
+  paySum()}
+function paySum(){const t=$("#pType").value;let s=0,bad=false;
+  document.querySelectorAll("#ptb input.amt").forEach(i=>{const o=D.rows.find(x=>key(x)===i.dataset.k);const v=num(i.value);const over=v>o[t].rem+0.001||v<0;i.classList.toggle("bad",over);bad=bad||over});
+  for(const [k,v] of Object.entries(ALLOC))s+=num(v);s=r2(s);const tot=num($("#pTotal").value);
+  $("#pSum").textContent=fmt(s);$("#pTot").textContent=tot?fmt(tot):"–";$("#pLeft").textContent=tot?fmt(r2(tot-s)):"–";
+  $("#pSave").disabled=bad||s<=0||(tot>0&&Math.abs(tot-s)>0.004)}
+$("#ptb").addEventListener("input",e=>{const i=e.target.closest("input.amt");if(!i)return;const v=num(i.value);if(v>0)ALLOC[i.dataset.k]=i.value;else delete ALLOC[i.dataset.k];paySum()});
+$("#ptb").addEventListener("click",e=>{const b=e.target.closest("[data-full]");if(!b)return;const t=$("#pType").value;const o=D.rows.find(x=>key(x)===b.dataset.full);
+  const tot=num($("#pTotal").value);let others=0;for(const [k,v] of Object.entries(ALLOC))if(k!==b.dataset.full)others+=num(v);
+  const want=tot>0?Math.min(o[t].rem,Math.max(0,r2(tot-others))):o[t].rem;if(want>0)ALLOC[b.dataset.full]=String(want);else delete ALLOC[b.dataset.full];renderPay()});
+$("#pAuto").onclick=()=>{const t=$("#pType").value;let left=num($("#pTotal").value);if(!(left>0)){msg("ใส่ยอดจ่ายรวมก่อน แล้วค่อยกดแบ่งอัตโนมัติ","warn");return}
+  ALLOC={};for(const o of payRows()){if(left<=0)break;const a=r2(Math.min(left,o[t].rem));ALLOC[key(o)]=String(a);left=r2(left-a)}
+  if(left>0)msg(`Network ที่แสดงอยู่รับได้ไม่พอ ยังเหลือ ${fmt(left)} บาท`,"warn");else msg("");renderPay()};
+$("#pClear").onclick=()=>{ALLOC={};renderPay()};
+$("#pType").onchange=()=>{ALLOC={};renderPay()};$("#pq").oninput=renderPay;$("#pTotal").oninput=paySum;
+$("#pSave").onclick=()=>{const t=$("#pType").value;const items=Object.entries(ALLOC).map(([k,v])=>{const [wbs,net]=k.split("|");return {wbs,net,amount:r2(num(v))}}).filter(x=>x.amount>0);
+  const d=$("#pDate").value;const [y,m,dd]=d.split("-");const th=`${dd}/${m}/${String(+y+543).slice(-2)}`;
+  $("#dlgBody").innerHTML=`<b>ยืนยันบันทึก "${TN[t]}" วันที่ ${th}</b><div class="tbl" style="margin-top:8px;max-height:45vh"><table><thead><tr><th>WBS</th><th>Network</th><th class="n">จำนวน</th></tr></thead><tbody>
+    ${items.map(x=>`<tr><td>${esc(x.wbs)}</td><td>${esc(x.net)}</td><td class="n">${fmt(x.amount)}</td></tr>`).join("")}<tr class="grp"><td colspan="2">รวม</td><td class="n">${fmt(items.reduce((a,x)=>a+x.amount,0))}</td></tr></tbody></table></div>
+    <p class="sub">ยอดจะถูกบวกเข้าช่อง Act.${t==="labor"?"ค่าแรง":"ค่าเบ็ดเตล็ด"} ในชีต และเก็บประวัติในชีต "ประวัติ"</p>`;
+  $("#dlgBtns").innerHTML=`<button class="alt" id="dNo">ยกเลิก</button><button id="dYes">ยืนยันบันทึก</button>`;
+  $("#dNo").onclick=()=>$("#dlg").close();
+  $("#dYes").onclick=async()=>{$("#dYes").disabled=true;try{set(await call("saveEntries",{type:t,date:d,note:$("#pNote").value.trim(),items}));$("#dlg").close();ALLOC={};$("#pTotal").value="";$("#pNote").value="";renderPay();msg(`✓ บันทึก ${items.length} รายการแล้ว`)}
+    catch(e){$("#dlg").close();msg("บันทึกไม่สำเร็จ: "+e.message,"err")}};
+  $("#dlg").showModal()};
+
+/* ---- history ---- */
+function renderHist(){const q=$("#hq").value.trim().toLowerCase(),ty=$("#ht").value;
+  const H=D.history.filter(h=>(!ty||h.type===ty)&&(!q||[h.wbs,h.net,h.desc,h.note].some(x=>String(x).toLowerCase().includes(q)))).sort((a,b)=>(b.iso+b.at).localeCompare(a.iso+a.at));
+  $("#htb").innerHTML=H.map(h=>`<tr class="${h.status==="ยกเลิก"?"cx":""}"><td>${esc(h.date)}</td><td>${esc(h.type)}</td><td>${esc(h.wbs)}</td><td>${esc(h.net)}</td><td>${esc(h.desc)}</td><td class="n">${fmt(h.amount)}</td><td>${esc(h.note)}</td>
+    <td>${h.status==="ยกเลิก"?"ยกเลิกแล้ว":`<button class="sm red" data-cx="${esc(h.id)}">ยกเลิก</button>`}</td></tr>`).join("")||`<tr><td colspan="8">ยังไม่มีประวัติ</td></tr>`}
+$("#hq").oninput=renderHist;$("#ht").onchange=renderHist;
+$("#htb").onclick=e=>{const b=e.target.closest("[data-cx]");if(!b)return;const h=D.history.find(x=>x.id===b.dataset.cx);
+  $("#dlgBody").innerHTML=`<b>ยกเลิกรายการนี้?</b><p>${esc(h.date)} · ${esc(h.type)} · ${esc(h.net)} · ${fmt(h.amount)} บาท</p><p class="sub">ยอดจะถูกหักออกจากช่อง Act. ในชีต และรายการจะถูกขีดฆ่าในประวัติ (ไม่ลบทิ้ง)</p>`;
+  $("#dlgBtns").innerHTML=`<button class="alt" id="dNo">ไม่</button><button class="red" id="dYes">ยกเลิกรายการ</button>`;
+  $("#dNo").onclick=()=>$("#dlg").close();$("#dYes").onclick=async()=>{$("#dYes").disabled=true;try{set(await call("cancelEntry",h.id));msg("✓ ยกเลิกรายการแล้ว")}catch(e){msg("ยกเลิกไม่สำเร็จ: "+e.message,"err")}$("#dlg").close()};
+  $("#dlg").showModal()};
+
+document.querySelector("nav").onclick=e=>{const b=e.target.closest("button[data-v]");if(!b)return;view=b.dataset.v;render()};
+$("#reload").onclick=load;$("#q").oninput=renderList;
+load();
+</script></body></html>
